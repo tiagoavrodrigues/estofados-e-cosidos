@@ -1,13 +1,13 @@
-package com.example.estofadosecosidos;
+package com.estofados.ecosidos;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class EstofadosecosidosApplication {
+public class EstofadosEcosidosApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(EstofadosecosidosApplication.class, args);
+        SpringApplication.run(EstofadosEcosidosApplication.class, args);
     }
 
 }

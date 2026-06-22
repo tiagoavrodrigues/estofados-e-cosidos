@@ -15,7 +15,6 @@ O sistema pretende acompanhar o fluxo de produção de forma estruturada, garant
 * Java 21
 * Spring Boot
 * Spring Web MVC
-* Thymeleaf
 * Spring Data JPA
 * Hibernate
 * PostgreSQL
@@ -62,7 +61,7 @@ Exemplo:
 DB_NAME=estofadosecosidos
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
-DB_PORT=5432
+DB_PORT=5433
 DB_URL=jdbc:postgresql://localhost:5433/estofadosecosidos
 ```
 
@@ -138,14 +137,14 @@ No Windows PowerShell:
 src/
 ├── main/
 │   ├── java/
-│   │   └── com/example/estofadosecosidos/
-│   │       └── EstofadosecosidosApplication.java
+│   │   └── com/estofados/ecosidos/
+│   │       └── EstofadosEcosidosApplication.java
 │   └── resources/
 │       └── application.properties
 └── test/
     └── java/
-        └── com/example/estofadosecosidos/
-            └── EstofadosecosidosApplicationTests.java
+        └── com/estofados/ecosidos/
+            └── EstofadosEcosidosApplicationTests.java
 ```
 
 ## Configuração da aplicação
@@ -155,7 +154,7 @@ A aplicação usa variáveis de ambiente com valores por defeito.
 Exemplo em `application.properties`:
 
 ```properties
-spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5433/estofadosecosidos}
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:${DB_PORT:5433}/${DB_NAME:estofadosecosidos}}
 spring.datasource.username=${DB_USERNAME:postgres}
 spring.datasource.password=${DB_PASSWORD:postgres}
 ```
@@ -203,7 +202,7 @@ Funcionalidades futuras previstas:
 * Associação entre semiacabado e produto acabado
 * Registos de qualidade
 * Embalagem e expedição
-* Interface Web com Thymeleaf
+* Interface Web para customers
 * Possível interface Desktop com JavaFX ou Swing
 
 ## Autores

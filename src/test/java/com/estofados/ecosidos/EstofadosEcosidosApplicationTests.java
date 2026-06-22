@@ -1,10 +1,10 @@
-package com.example.estofadosecosidos;
+package com.estofados.ecosidos;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class EstofadosecosidosApplicationTests {
+class EstofadosEcosidosApplicationTests {
 
     @Test
     void contextLoads() {
