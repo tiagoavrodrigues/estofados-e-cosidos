@@ -12,6 +12,7 @@ import com.estofados.ecosidos.repository.CustomerRepository;
 import com.estofados.ecosidos.repository.PartRepository;
 import com.estofados.ecosidos.service.input.CustomerOrderCreateInput;
 import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
+import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,7 +36,7 @@ public class CustomerOrderService {
     private final PartRepository partRepository;
 
     @Transactional
-    public CustomerOrder create(CustomerOrderCreateInput input) {
+    public CustomerOrderCreateResult create(CustomerOrderCreateInput input) {
         validateInput(input);
 
         Customer customer = findCustomerById(input.customerId());
@@ -55,7 +56,13 @@ public class CustomerOrderService {
             customerOrderLineRepository.save(line);
         }
 
-        return savedCustomerOrder;
+        return new CustomerOrderCreateResult(
+                savedCustomerOrder.getId(),
+                savedCustomerOrder.getCode(),
+                customer.getId(),
+                receivedStatus.getCode(),
+                savedCustomerOrder.getOrderDate(),
+                savedCustomerOrder.getNotes());
     }
 
     private void validateInput(CustomerOrderCreateInput input) {
