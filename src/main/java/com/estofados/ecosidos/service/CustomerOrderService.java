@@ -15,12 +15,15 @@ import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,6 +96,16 @@ public class CustomerOrderService {
                 customerOrder.getOrderDate(),
                 customerOrder.getNotes(),
                 lines);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CustomerOrderSummaryResult> findAll(Pageable pageable) {
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable is required.");
+        }
+
+        return customerOrderRepository.findAllByOrderByIdDesc(pageable)
+                .map(this::toSummaryResult);
     }
 
     private void validateInput(CustomerOrderCreateInput input) {
@@ -176,5 +189,19 @@ public class CustomerOrderService {
                 part.getCode(),
                 part.getName(),
                 line.getQuantity());
+    }
+
+    private CustomerOrderSummaryResult toSummaryResult(CustomerOrder customerOrder) {
+        Customer customer = customerOrder.getCustomer();
+        CustomerOrderStatus status = customerOrder.getStatus();
+
+        return new CustomerOrderSummaryResult(
+                customerOrder.getId(),
+                customerOrder.getCode(),
+                customer.getId(),
+                customer.getCode(),
+                customer.getName(),
+                status.getCode(),
+                customerOrder.getOrderDate());
     }
 }
