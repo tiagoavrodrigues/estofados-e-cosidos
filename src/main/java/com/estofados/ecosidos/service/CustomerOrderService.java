@@ -13,10 +13,13 @@ import com.estofados.ecosidos.repository.PartRepository;
 import com.estofados.ecosidos.service.input.CustomerOrderCreateInput;
 import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
+import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
+import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +66,33 @@ public class CustomerOrderService {
                 receivedStatus.getCode(),
                 savedCustomerOrder.getOrderDate(),
                 savedCustomerOrder.getNotes());
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerOrderDetailResult findById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Customer order id is required.");
+        }
+
+        CustomerOrder customerOrder = customerOrderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Customer order not found: " + id));
+
+        Customer customer = customerOrder.getCustomer();
+        CustomerOrderStatus status = customerOrder.getStatus();
+        List<CustomerOrderLineResult> lines = customerOrderLineRepository.findByCustomerOrderId(customerOrder.getId()).stream()
+                .map(this::toLineResult)
+                .toList();
+
+        return new CustomerOrderDetailResult(
+                customerOrder.getId(),
+                customerOrder.getCode(),
+                customer.getId(),
+                customer.getCode(),
+                customer.getName(),
+                status.getCode(),
+                customerOrder.getOrderDate(),
+                customerOrder.getNotes(),
+                lines);
     }
 
     private void validateInput(CustomerOrderCreateInput input) {
@@ -135,5 +165,16 @@ public class CustomerOrderService {
         line.setQuantity(input.quantity());
 
         return line;
+    }
+
+    private CustomerOrderLineResult toLineResult(CustomerOrderLine line) {
+        Part part = line.getPart();
+
+        return new CustomerOrderLineResult(
+                line.getId(),
+                part.getId(),
+                part.getCode(),
+                part.getName(),
+                line.getQuantity());
     }
 }
