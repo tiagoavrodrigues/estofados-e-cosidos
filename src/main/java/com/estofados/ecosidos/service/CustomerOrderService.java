@@ -4,6 +4,7 @@ import com.estofados.ecosidos.domain.Customer;
 import com.estofados.ecosidos.domain.CustomerOrder;
 import com.estofados.ecosidos.domain.CustomerOrderLine;
 import com.estofados.ecosidos.domain.CustomerOrderStatus;
+import com.estofados.ecosidos.domain.CustomerOrderStatusCode;
 import com.estofados.ecosidos.domain.Part;
 import com.estofados.ecosidos.repository.CustomerOrderLineRepository;
 import com.estofados.ecosidos.repository.CustomerOrderRepository;
@@ -31,8 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CustomerOrderService {
 
-    private static final String RECEIVED_STATUS_CODE = "RECEIVED";
-    private static final String CANCELLED_STATUS_CODE = "CANCELLED";
     private static final String FINISHED_PRODUCT_PART_TYPE_CODE = "FINISHED_PRODUCT";
     private static final DateTimeFormatter CODE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -47,7 +46,7 @@ public class CustomerOrderService {
         validateInput(input);
 
         Customer customer = findCustomerById(input.customerId());
-        CustomerOrderStatus receivedStatus = findReceivedStatus();
+        CustomerOrderStatus receivedStatus = findStatus(CustomerOrderStatusCode.RECEIVED);
 
         CustomerOrder customerOrder = new CustomerOrder();
         customerOrder.setCode(generateCode());
@@ -91,11 +90,9 @@ public class CustomerOrderService {
 
         CustomerOrder customerOrder = findCustomerOrderById(id);
 
-        if (CANCELLED_STATUS_CODE.equals(customerOrder.getStatus().getCode())) {
-            throw new IllegalArgumentException("Customer order is already cancelled: " + id);
-        }
+        validateCanCancel(customerOrder);
 
-        CustomerOrderStatus cancelledStatus = findCancelledStatus();
+        CustomerOrderStatus cancelledStatus = findStatus(CustomerOrderStatusCode.CANCELLED);
         customerOrder.setStatus(cancelledStatus);
         CustomerOrder savedCustomerOrder = customerOrderRepository.save(customerOrder);
 
@@ -168,16 +165,10 @@ public class CustomerOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found: " + customerId));
     }
 
-    private CustomerOrderStatus findReceivedStatus() {
-        return customerOrderStatusRepository.findByCode(RECEIVED_STATUS_CODE)
+    private CustomerOrderStatus findStatus(CustomerOrderStatusCode statusCode) {
+        return customerOrderStatusRepository.findByCode(statusCode.name())
                 .orElseThrow(() -> new IllegalStateException("Customer order status not found: "
-                        + RECEIVED_STATUS_CODE));
-    }
-
-    private CustomerOrderStatus findCancelledStatus() {
-        return customerOrderStatusRepository.findByCode(CANCELLED_STATUS_CODE)
-                .orElseThrow(() -> new IllegalStateException("Customer order status not found: "
-                        + CANCELLED_STATUS_CODE));
+                        + statusCode.name()));
     }
 
     private CustomerOrder findCustomerOrderById(Long id) {
@@ -196,6 +187,20 @@ public class CustomerOrderService {
             throw new IllegalArgumentException("Customer order line part must be a finished product: "
                     + part.getId());
         }
+    }
+
+    private void validateCanCancel(CustomerOrder customerOrder) {
+        if (hasStatus(customerOrder, CustomerOrderStatusCode.CANCELLED)) {
+            throw new IllegalArgumentException("Customer order is already cancelled: " + customerOrder.getId());
+        }
+    }
+
+    private boolean hasStatus(CustomerOrder customerOrder, CustomerOrderStatusCode statusCode) {
+        if (customerOrder.getStatus() == null) {
+            return false;
+        }
+
+        return statusCode.name().equals(customerOrder.getStatus().getCode());
     }
 
     private String generateCode() {
