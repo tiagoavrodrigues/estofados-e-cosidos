@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerOrderService {
 
     private static final String RECEIVED_STATUS_CODE = "RECEIVED";
+    private static final String CANCELLED_STATUS_CODE = "CANCELLED";
     private static final String FINISHED_PRODUCT_PART_TYPE_CODE = "FINISHED_PRODUCT";
     private static final DateTimeFormatter CODE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -77,9 +78,41 @@ public class CustomerOrderService {
             throw new IllegalArgumentException("Customer order id is required.");
         }
 
-        CustomerOrder customerOrder = customerOrderRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Customer order not found: " + id));
+        CustomerOrder customerOrder = findCustomerOrderById(id);
 
+        return toDetailResult(customerOrder);
+    }
+
+    @Transactional
+    public CustomerOrderDetailResult cancel(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Customer order id is required.");
+        }
+
+        CustomerOrder customerOrder = findCustomerOrderById(id);
+
+        if (CANCELLED_STATUS_CODE.equals(customerOrder.getStatus().getCode())) {
+            throw new IllegalArgumentException("Customer order is already cancelled: " + id);
+        }
+
+        CustomerOrderStatus cancelledStatus = findCancelledStatus();
+        customerOrder.setStatus(cancelledStatus);
+        CustomerOrder savedCustomerOrder = customerOrderRepository.save(customerOrder);
+
+        return toDetailResult(savedCustomerOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CustomerOrderSummaryResult> findAll(Pageable pageable) {
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable is required.");
+        }
+
+        return customerOrderRepository.findAllByOrderByIdDesc(pageable)
+                .map(this::toSummaryResult);
+    }
+
+    private CustomerOrderDetailResult toDetailResult(CustomerOrder customerOrder) {
         Customer customer = customerOrder.getCustomer();
         CustomerOrderStatus status = customerOrder.getStatus();
         List<CustomerOrderLineResult> lines = customerOrderLineRepository.findByCustomerOrderId(customerOrder.getId()).stream()
@@ -96,16 +129,6 @@ public class CustomerOrderService {
                 customerOrder.getOrderDate(),
                 customerOrder.getNotes(),
                 lines);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<CustomerOrderSummaryResult> findAll(Pageable pageable) {
-        if (pageable == null) {
-            throw new IllegalArgumentException("Pageable is required.");
-        }
-
-        return customerOrderRepository.findAllByOrderByIdDesc(pageable)
-                .map(this::toSummaryResult);
     }
 
     private void validateInput(CustomerOrderCreateInput input) {
@@ -149,6 +172,17 @@ public class CustomerOrderService {
         return customerOrderStatusRepository.findByCode(RECEIVED_STATUS_CODE)
                 .orElseThrow(() -> new IllegalStateException("Customer order status not found: "
                         + RECEIVED_STATUS_CODE));
+    }
+
+    private CustomerOrderStatus findCancelledStatus() {
+        return customerOrderStatusRepository.findByCode(CANCELLED_STATUS_CODE)
+                .orElseThrow(() -> new IllegalStateException("Customer order status not found: "
+                        + CANCELLED_STATUS_CODE));
+    }
+
+    private CustomerOrder findCustomerOrderById(Long id) {
+        return customerOrderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Customer order not found: " + id));
     }
 
     private Part findPartById(Long partId) {
