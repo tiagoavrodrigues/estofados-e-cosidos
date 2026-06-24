@@ -40,7 +40,7 @@ create table user_profile_role (
     constraint fk_user_profile_role_role foreign key (role_id) references role (id)
 );
 
-create unique index uk_user_profile_role_active
+create unique index ux_user_profile_role_no_duplicate_role_assignment
     on user_profile_role (user_profile_id, role_id)
     where deleted_at is null;
 
