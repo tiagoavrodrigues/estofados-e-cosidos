@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerOrderService {
 
     private static final String RECEIVED_STATUS_CODE = "RECEIVED";
+    private static final String FINISHED_PRODUCT_PART_TYPE_CODE = "FINISHED_PRODUCT";
     private static final DateTimeFormatter CODE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     private final CustomerRepository customerRepository;
@@ -105,12 +106,21 @@ public class CustomerOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Part not found: " + partId));
     }
 
+    private void validateCustomerOrderPart(Part part) {
+        if (part.getPartType() == null
+                || !FINISHED_PRODUCT_PART_TYPE_CODE.equals(part.getPartType().getCode())) {
+            throw new IllegalArgumentException("Customer order line part must be a finished product: "
+                    + part.getId());
+        }
+    }
+
     private String generateCode() {
         return "CO-" + CODE_FORMATTER.format(LocalDateTime.now());
     }
 
     private CustomerOrderLine createLine(CustomerOrder customerOrder, CustomerOrderLineCreateInput input) {
         Part part = findPartById(input.partId());
+        validateCustomerOrderPart(part);
 
         CustomerOrderLine line = new CustomerOrderLine();
         line.setCustomerOrder(customerOrder);
