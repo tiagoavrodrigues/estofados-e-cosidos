@@ -41,7 +41,7 @@ public class PartRawMaterialRequirement {
     private String unit;
 
     @Column(name = "waste_percentage", nullable = false, precision = 5, scale = 2)
-    private BigDecimal wastePercentage;
+    private BigDecimal wastePercentage = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private Boolean active = true;

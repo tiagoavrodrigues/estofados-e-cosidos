@@ -53,7 +53,7 @@ public class StockReservation {
     private BigDecimal reservedQuantity;
 
     @Column(name = "consumed_quantity", nullable = false, precision = 14, scale = 3)
-    private BigDecimal consumedQuantity;
+    private BigDecimal consumedQuantity = BigDecimal.ZERO;
 
     @Column(nullable = false, length = 20)
     private String unit;
