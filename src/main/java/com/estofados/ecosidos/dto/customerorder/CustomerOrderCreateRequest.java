@@ -10,6 +10,6 @@ public record CustomerOrderCreateRequest(
         @NotNull Long customerId,
         LocalDate orderDate,
         String notes,
-        @NotEmpty @Valid List<CustomerOrderLineCreateRequest> lines
+        @NotEmpty List<@Valid CustomerOrderLineCreateRequest> lines
 ) {
 }
