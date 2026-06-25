@@ -62,6 +62,13 @@ public class CustomerOrderController {
         return ResponseEntity.ok(toDetailResponse(result));
     }
 
+    @PostMapping("/{id}/validate")
+    public ResponseEntity<CustomerOrderDetailResponse> validate(@PathVariable Long id) {
+        CustomerOrderDetailResult result = customerOrderService.validate(id);
+
+        return ResponseEntity.ok(toDetailResponse(result));
+    }
+
     @PostMapping("/{id}/cancel")
     public ResponseEntity<CustomerOrderDetailResponse> cancel(@PathVariable Long id) {
         CustomerOrderDetailResult result = customerOrderService.cancel(id);

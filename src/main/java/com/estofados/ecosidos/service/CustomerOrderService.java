@@ -83,6 +83,23 @@ public class CustomerOrderService {
     }
 
     @Transactional
+    public CustomerOrderDetailResult validate(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Customer order id is required.");
+        }
+
+        CustomerOrder customerOrder = findCustomerOrderById(id);
+
+        validateCanValidate(customerOrder);
+
+        CustomerOrderStatus validatedStatus = findStatus(CustomerOrderStatusCode.VALIDATED);
+        customerOrder.setStatus(validatedStatus);
+        CustomerOrder savedCustomerOrder = customerOrderRepository.save(customerOrder);
+
+        return toDetailResult(savedCustomerOrder);
+    }
+
+    @Transactional
     public CustomerOrderDetailResult cancel(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("Customer order id is required.");
@@ -195,12 +212,39 @@ public class CustomerOrderService {
         }
     }
 
+    private void validateCanValidate(CustomerOrder customerOrder) {
+        String currentStatusCode = getStatusCode(customerOrder);
+
+        if (CustomerOrderStatusCode.RECEIVED.name().equals(currentStatusCode)) {
+            return;
+        }
+
+        if (CustomerOrderStatusCode.CANCELLED.name().equals(currentStatusCode)) {
+            throw new IllegalArgumentException("Cancelled customer order cannot be validated: "
+                    + customerOrder.getId());
+        }
+
+        if (CustomerOrderStatusCode.VALIDATED.name().equals(currentStatusCode)) {
+            throw new IllegalArgumentException("Customer order is already validated: " + customerOrder.getId());
+        }
+
+        throw new IllegalArgumentException("Customer order cannot be validated from status: " + currentStatusCode);
+    }
+
     private boolean hasStatus(CustomerOrder customerOrder, CustomerOrderStatusCode statusCode) {
         if (customerOrder.getStatus() == null) {
             return false;
         }
 
         return statusCode.name().equals(customerOrder.getStatus().getCode());
+    }
+
+    private String getStatusCode(CustomerOrder customerOrder) {
+        if (customerOrder.getStatus() == null) {
+            return null;
+        }
+
+        return customerOrder.getStatus().getCode();
     }
 
     private String generateCode() {
