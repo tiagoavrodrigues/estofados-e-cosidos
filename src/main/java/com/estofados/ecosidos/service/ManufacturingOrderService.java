@@ -98,6 +98,24 @@ public class ManufacturingOrderService {
         return toDetailResult(savedManufacturingOrder);
     }
 
+    @Transactional
+    public ManufacturingOrderDetailResult confirmTransformed(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Manufacturing order id is required.");
+        }
+
+        ManufacturingOrder manufacturingOrder = manufacturingOrderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Manufacturing order not found: " + id));
+
+        validateCanConfirmTransformed(manufacturingOrder);
+
+        ManufacturingOrderStatus transformedStatus = findStatus(ManufacturingOrderStatusCode.TRANSFORMED);
+        manufacturingOrder.setStatus(transformedStatus);
+        ManufacturingOrder savedManufacturingOrder = manufacturingOrderRepository.save(manufacturingOrder);
+
+        return toDetailResult(savedManufacturingOrder);
+    }
+
     private int normalizePage(int page) {
         if (page < 0) {
             return DEFAULT_PAGE;
@@ -130,6 +148,15 @@ public class ManufacturingOrderService {
         }
 
         throw new IllegalArgumentException("Manufacturing order must be OPEN to start cutting: "
+                + manufacturingOrder.getId());
+    }
+
+    private void validateCanConfirmTransformed(ManufacturingOrder manufacturingOrder) {
+        if (ManufacturingOrderStatusCode.CUT.name().equals(getStatusCode(manufacturingOrder))) {
+            return;
+        }
+
+        throw new IllegalArgumentException("Manufacturing order must be CUT to confirm transformed: "
                 + manufacturingOrder.getId());
     }
 

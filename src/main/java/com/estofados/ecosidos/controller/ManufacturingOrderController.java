@@ -54,6 +54,13 @@ public class ManufacturingOrderController {
         return ResponseEntity.ok(toDetailResponse(result));
     }
 
+    @PostMapping("/{id}/confirm-transformed")
+    public ResponseEntity<ManufacturingOrderDetailResponse> confirmTransformed(@PathVariable Long id) {
+        ManufacturingOrderDetailResult result = manufacturingOrderService.confirmTransformed(id);
+
+        return ResponseEntity.ok(toDetailResponse(result));
+    }
+
     private PageResponse<ManufacturingOrderSummaryResponse> toPageResponse(
             PageResponse<ManufacturingOrderSummaryResult> result) {
         List<ManufacturingOrderSummaryResponse> content = result.content().stream()
