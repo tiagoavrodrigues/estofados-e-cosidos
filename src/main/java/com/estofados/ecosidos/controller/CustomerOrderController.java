@@ -5,6 +5,7 @@ import com.estofados.ecosidos.dto.customerorder.CustomerOrderCreateRequest;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderDetailResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderLineCreateRequest;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderLineResponse;
+import com.estofados.ecosidos.dto.customerorder.CustomerOrderManufacturingOrderResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialAvailabilityResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialRequirementResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderResponse;
@@ -16,6 +17,7 @@ import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderManufacturingOrderResult;
 import com.estofados.ecosidos.service.result.CustomerOrderMaterialAvailabilityResult;
 import com.estofados.ecosidos.service.result.CustomerOrderMaterialRequirementResult;
 import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
@@ -82,6 +84,15 @@ public class CustomerOrderController {
         List<CustomerOrderMaterialAvailabilityResponse> response = customerOrderMaterialService.findMaterialAvailability(id)
                 .stream()
                 .map(this::toMaterialAvailabilityResponse)
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/manufacturing-orders")
+    public ResponseEntity<List<CustomerOrderManufacturingOrderResponse>> findManufacturingOrders(@PathVariable Long id) {
+        List<CustomerOrderManufacturingOrderResponse> response = customerOrderService.findManufacturingOrders(id).stream()
+                .map(this::toManufacturingOrderResponse)
                 .toList();
 
         return ResponseEntity.ok(response);
@@ -214,6 +225,21 @@ public class CustomerOrderController {
                 result.missingQuantity(),
                 result.unit(),
                 result.available());
+    }
+
+    private CustomerOrderManufacturingOrderResponse toManufacturingOrderResponse(
+            CustomerOrderManufacturingOrderResult result) {
+        return new CustomerOrderManufacturingOrderResponse(
+                result.id(),
+                result.code(),
+                result.customerOrderLineId(),
+                result.partId(),
+                result.partCode(),
+                result.partName(),
+                result.quantity(),
+                result.status(),
+                result.openedAt(),
+                result.completedAt());
     }
 
     private void validatePagination(int page, int size) {

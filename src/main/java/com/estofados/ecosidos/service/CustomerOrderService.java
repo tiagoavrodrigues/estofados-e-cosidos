@@ -28,6 +28,7 @@ import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderManufacturingOrderResult;
 import com.estofados.ecosidos.service.result.CustomerOrderMaterialAvailabilityResult;
 import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
 import java.math.BigDecimal;
@@ -214,6 +215,19 @@ public class CustomerOrderService {
 
         return customerOrderRepository.findAllByOrderByIdDesc(pageable)
                 .map(this::toSummaryResult);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CustomerOrderManufacturingOrderResult> findManufacturingOrders(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Customer order id is required.");
+        }
+
+        CustomerOrder customerOrder = findCustomerOrderById(id);
+
+        return manufacturingOrderRepository.findByCustomerOrderIdOrderByIdAsc(customerOrder.getId()).stream()
+                .map(this::toManufacturingOrderResult)
+                .toList();
     }
 
     private CustomerOrderDetailResult toDetailResult(CustomerOrder customerOrder) {
@@ -551,5 +565,23 @@ public class CustomerOrderService {
                 customer.getName(),
                 status.getCode(),
                 customerOrder.getOrderDate());
+    }
+
+    private CustomerOrderManufacturingOrderResult toManufacturingOrderResult(ManufacturingOrder manufacturingOrder) {
+        CustomerOrderLine customerOrderLine = manufacturingOrder.getCustomerOrderLine();
+        Part part = manufacturingOrder.getPart();
+        ManufacturingOrderStatus status = manufacturingOrder.getStatus();
+
+        return new CustomerOrderManufacturingOrderResult(
+                manufacturingOrder.getId(),
+                manufacturingOrder.getCode(),
+                customerOrderLine != null ? customerOrderLine.getId() : null,
+                part.getId(),
+                part.getCode(),
+                part.getName(),
+                manufacturingOrder.getQuantity(),
+                status.getCode(),
+                manufacturingOrder.getOpenedAt(),
+                manufacturingOrder.getCompletedAt());
     }
 }
