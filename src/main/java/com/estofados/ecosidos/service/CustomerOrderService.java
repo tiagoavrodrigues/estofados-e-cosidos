@@ -6,16 +6,24 @@ import com.estofados.ecosidos.domain.CustomerOrderLine;
 import com.estofados.ecosidos.domain.CustomerOrderStatus;
 import com.estofados.ecosidos.domain.CustomerOrderStatusCode;
 import com.estofados.ecosidos.domain.Part;
+import com.estofados.ecosidos.domain.RawMaterial;
+import com.estofados.ecosidos.domain.StockReservation;
+import com.estofados.ecosidos.domain.StockReservationStatus;
+import com.estofados.ecosidos.domain.StockReservationStatusCode;
 import com.estofados.ecosidos.repository.CustomerOrderLineRepository;
 import com.estofados.ecosidos.repository.CustomerOrderRepository;
 import com.estofados.ecosidos.repository.CustomerOrderStatusRepository;
 import com.estofados.ecosidos.repository.CustomerRepository;
 import com.estofados.ecosidos.repository.PartRepository;
+import com.estofados.ecosidos.repository.RawMaterialRepository;
+import com.estofados.ecosidos.repository.StockReservationRepository;
+import com.estofados.ecosidos.repository.StockReservationStatusRepository;
 import com.estofados.ecosidos.service.input.CustomerOrderCreateInput;
 import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderMaterialAvailabilityResult;
 import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,6 +48,10 @@ public class CustomerOrderService {
     private final CustomerOrderRepository customerOrderRepository;
     private final CustomerOrderLineRepository customerOrderLineRepository;
     private final PartRepository partRepository;
+    private final CustomerOrderMaterialService customerOrderMaterialService;
+    private final StockReservationRepository stockReservationRepository;
+    private final StockReservationStatusRepository stockReservationStatusRepository;
+    private final RawMaterialRepository rawMaterialRepository;
 
     @Transactional
     public CustomerOrderCreateResult create(CustomerOrderCreateInput input) {
@@ -111,6 +123,43 @@ public class CustomerOrderService {
 
         CustomerOrderStatus cancelledStatus = findStatus(CustomerOrderStatusCode.CANCELLED);
         customerOrder.setStatus(cancelledStatus);
+        CustomerOrder savedCustomerOrder = customerOrderRepository.save(customerOrder);
+
+        return toDetailResult(savedCustomerOrder);
+    }
+
+    @Transactional
+    public CustomerOrderDetailResult reserveMaterials(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Customer order id is required.");
+        }
+
+        CustomerOrder customerOrder = findCustomerOrderById(id);
+
+        validateCanReserveMaterials(customerOrder);
+
+        List<CustomerOrderMaterialAvailabilityResult> availability =
+                customerOrderMaterialService.findMaterialAvailability(id);
+
+        if (hasMissingMaterial(availability)) {
+            CustomerOrderStatus waitingForMaterialStatus = findStatus(CustomerOrderStatusCode.WAITING_FOR_MATERIAL);
+            customerOrder.setStatus(waitingForMaterialStatus);
+            CustomerOrder savedCustomerOrder = customerOrderRepository.save(customerOrder);
+
+            return toDetailResult(savedCustomerOrder);
+        }
+
+        StockReservationStatus reservedStatus = findStockReservationStatus(StockReservationStatusCode.RESERVED);
+
+        int sequence = 1;
+        for (CustomerOrderMaterialAvailabilityResult item : availability) {
+            StockReservation reservation = createStockReservation(customerOrder, item, reservedStatus, sequence);
+            stockReservationRepository.save(reservation);
+            sequence++;
+        }
+
+        CustomerOrderStatus readyForProductionStatus = findStatus(CustomerOrderStatusCode.READY_FOR_PRODUCTION);
+        customerOrder.setStatus(readyForProductionStatus);
         CustomerOrder savedCustomerOrder = customerOrderRepository.save(customerOrder);
 
         return toDetailResult(savedCustomerOrder);
@@ -188,9 +237,20 @@ public class CustomerOrderService {
                         + statusCode.name()));
     }
 
+    private StockReservationStatus findStockReservationStatus(StockReservationStatusCode statusCode) {
+        return stockReservationStatusRepository.findByCode(statusCode.name())
+                .orElseThrow(() -> new IllegalStateException("Stock reservation status not found: "
+                        + statusCode.name()));
+    }
+
     private CustomerOrder findCustomerOrderById(Long id) {
         return customerOrderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Customer order not found: " + id));
+    }
+
+    private RawMaterial findRawMaterialById(Long rawMaterialId) {
+        return rawMaterialRepository.findById(rawMaterialId)
+                .orElseThrow(() -> new IllegalArgumentException("Raw material not found: " + rawMaterialId));
     }
 
     private Part findPartById(Long partId) {
@@ -231,6 +291,55 @@ public class CustomerOrderService {
         throw new IllegalArgumentException("Customer order cannot be validated from status: " + currentStatusCode);
     }
 
+    private void validateCanReserveMaterials(CustomerOrder customerOrder) {
+        String currentStatusCode = getStatusCode(customerOrder);
+        Long id = customerOrder.getId();
+
+        if (CustomerOrderStatusCode.VALIDATED.name().equals(currentStatusCode)
+                || CustomerOrderStatusCode.WAITING_FOR_MATERIAL.name().equals(currentStatusCode)) {
+            return;
+        }
+
+        if (CustomerOrderStatusCode.READY_FOR_PRODUCTION.name().equals(currentStatusCode)) {
+            throw new IllegalArgumentException("Customer order materials are already reserved: " + id);
+        }
+
+        if (CustomerOrderStatusCode.CANCELLED.name().equals(currentStatusCode)) {
+            throw new IllegalArgumentException("Cancelled customer order cannot reserve materials: " + id);
+        }
+
+        if (CustomerOrderStatusCode.RECEIVED.name().equals(currentStatusCode)) {
+            throw new IllegalArgumentException("Customer order must be validated before reserving materials: " + id);
+        }
+
+        throw new IllegalArgumentException("Customer order cannot reserve materials from status: " + currentStatusCode);
+    }
+
+    private boolean hasMissingMaterial(List<CustomerOrderMaterialAvailabilityResult> availability) {
+        return availability.stream()
+                .anyMatch(item -> !item.available());
+    }
+
+    private StockReservation createStockReservation(
+            CustomerOrder customerOrder,
+            CustomerOrderMaterialAvailabilityResult item,
+            StockReservationStatus reservedStatus,
+            int sequence) {
+        RawMaterial rawMaterial = findRawMaterialById(item.rawMaterialId());
+
+        StockReservation reservation = new StockReservation();
+        reservation.setCode(generateStockReservationCode(customerOrder, item, sequence));
+        reservation.setCustomerOrder(customerOrder);
+        reservation.setRawMaterial(rawMaterial);
+        reservation.setStatus(reservedStatus);
+        reservation.setReservedQuantity(item.requiredQuantity());
+        reservation.setConsumedQuantity(BigDecimal.ZERO);
+        reservation.setUnit(item.unit());
+        reservation.setReservedAt(LocalDateTime.now());
+
+        return reservation;
+    }
+
     private boolean hasStatus(CustomerOrder customerOrder, CustomerOrderStatusCode statusCode) {
         if (customerOrder.getStatus() == null) {
             return false;
@@ -249,6 +358,20 @@ public class CustomerOrderService {
 
     private String generateCode() {
         return "CO-" + CODE_FORMATTER.format(LocalDateTime.now());
+    }
+
+    private String generateStockReservationCode(
+            CustomerOrder customerOrder,
+            CustomerOrderMaterialAvailabilityResult item,
+            int sequence) {
+        return "SR-"
+                + CODE_FORMATTER.format(LocalDateTime.now())
+                + "-"
+                + customerOrder.getId()
+                + "-"
+                + item.rawMaterialId()
+                + "-"
+                + sequence;
     }
 
     private CustomerOrderLine createLine(CustomerOrder customerOrder, CustomerOrderLineCreateInput input) {
