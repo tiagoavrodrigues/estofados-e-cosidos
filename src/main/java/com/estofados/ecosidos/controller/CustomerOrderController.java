@@ -5,6 +5,7 @@ import com.estofados.ecosidos.dto.customerorder.CustomerOrderCreateRequest;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderDetailResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderLineCreateRequest;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderLineResponse;
+import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialAvailabilityResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialRequirementResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderSummaryResponse;
@@ -14,6 +15,7 @@ import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderMaterialAvailabilityResult;
 import com.estofados.ecosidos.service.result.CustomerOrderMaterialRequirementResult;
 import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
 import jakarta.validation.Valid;
@@ -68,6 +70,16 @@ public class CustomerOrderController {
     public ResponseEntity<List<CustomerOrderMaterialRequirementResponse>> findMaterialRequirements(@PathVariable Long id) {
         List<CustomerOrderMaterialRequirementResponse> response = customerOrderService.findMaterialRequirements(id).stream()
                 .map(this::toMaterialRequirementResponse)
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/material-availability")
+    public ResponseEntity<List<CustomerOrderMaterialAvailabilityResponse>> findMaterialAvailability(@PathVariable Long id) {
+        List<CustomerOrderMaterialAvailabilityResponse> response = customerOrderService.findMaterialAvailability(id)
+                .stream()
+                .map(this::toMaterialAvailabilityResponse)
                 .toList();
 
         return ResponseEntity.ok(response);
@@ -173,6 +185,19 @@ public class CustomerOrderController {
                 result.rawMaterialName(),
                 result.requiredQuantity(),
                 result.unit());
+    }
+
+    private CustomerOrderMaterialAvailabilityResponse toMaterialAvailabilityResponse(
+            CustomerOrderMaterialAvailabilityResult result) {
+        return new CustomerOrderMaterialAvailabilityResponse(
+                result.rawMaterialId(),
+                result.rawMaterialCode(),
+                result.rawMaterialName(),
+                result.requiredQuantity(),
+                result.availableQuantity(),
+                result.missingQuantity(),
+                result.unit(),
+                result.available());
     }
 
     private void validatePagination(int page, int size) {

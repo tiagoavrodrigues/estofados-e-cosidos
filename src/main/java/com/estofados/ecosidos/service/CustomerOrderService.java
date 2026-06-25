@@ -8,6 +8,10 @@ import com.estofados.ecosidos.domain.CustomerOrderStatusCode;
 import com.estofados.ecosidos.domain.Part;
 import com.estofados.ecosidos.domain.PartRawMaterialRequirement;
 import com.estofados.ecosidos.domain.RawMaterial;
+import com.estofados.ecosidos.domain.Stock;
+import com.estofados.ecosidos.domain.StockReservation;
+import com.estofados.ecosidos.domain.StockReservationStatusCode;
+import com.estofados.ecosidos.domain.StockStatusCode;
 import com.estofados.ecosidos.repository.BillOfMaterialItemRepository;
 import com.estofados.ecosidos.repository.CustomerOrderLineRepository;
 import com.estofados.ecosidos.repository.CustomerOrderRepository;
@@ -15,11 +19,14 @@ import com.estofados.ecosidos.repository.CustomerOrderStatusRepository;
 import com.estofados.ecosidos.repository.PartRawMaterialRequirementRepository;
 import com.estofados.ecosidos.repository.CustomerRepository;
 import com.estofados.ecosidos.repository.PartRepository;
+import com.estofados.ecosidos.repository.StockRepository;
+import com.estofados.ecosidos.repository.StockReservationRepository;
 import com.estofados.ecosidos.service.input.CustomerOrderCreateInput;
 import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderMaterialAvailabilityResult;
 import com.estofados.ecosidos.service.result.CustomerOrderMaterialRequirementResult;
 import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
 import java.math.BigDecimal;
@@ -42,6 +49,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerOrderService {
 
     private static final String FINISHED_PRODUCT_PART_TYPE_CODE = "FINISHED_PRODUCT";
+    private static final List<String> ACTIVE_STOCK_RESERVATION_STATUS_CODES = List.of(
+            StockReservationStatusCode.RESERVED.name(),
+            StockReservationStatusCode.PARTIALLY_CONSUMED.name());
     private static final DateTimeFormatter CODE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
     private static final int CALCULATION_SCALE = 6;
@@ -54,6 +64,8 @@ public class CustomerOrderService {
     private final PartRepository partRepository;
     private final BillOfMaterialItemRepository billOfMaterialItemRepository;
     private final PartRawMaterialRequirementRepository partRawMaterialRequirementRepository;
+    private final StockRepository stockRepository;
+    private final StockReservationRepository stockReservationRepository;
 
     @Transactional
     public CustomerOrderCreateResult create(CustomerOrderCreateInput input) {
@@ -156,6 +168,17 @@ public class CustomerOrderService {
         return requirements.values().stream()
                 .map(MaterialRequirementAccumulator::toResult)
                 .sorted(Comparator.comparing(CustomerOrderMaterialRequirementResult::rawMaterialCode))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CustomerOrderMaterialAvailabilityResult> findMaterialAvailability(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Customer order id is required.");
+        }
+
+        return findMaterialRequirements(id).stream()
+                .map(this::toMaterialAvailabilityResult)
                 .toList();
     }
 
@@ -330,6 +353,58 @@ public class CustomerOrderService {
 
         return BigDecimal.ONE.add(
                 wastePercentage.divide(ONE_HUNDRED, CALCULATION_SCALE, CALCULATION_ROUNDING_MODE));
+    }
+
+    private CustomerOrderMaterialAvailabilityResult toMaterialAvailabilityResult(
+            CustomerOrderMaterialRequirementResult requirement) {
+        BigDecimal availableQuantity = calculateAvailableQuantity(requirement.rawMaterialId(), requirement.unit());
+        BigDecimal missingQuantity = max(requirement.requiredQuantity().subtract(availableQuantity), BigDecimal.ZERO);
+
+        return new CustomerOrderMaterialAvailabilityResult(
+                requirement.rawMaterialId(),
+                requirement.rawMaterialCode(),
+                requirement.rawMaterialName(),
+                requirement.requiredQuantity(),
+                availableQuantity,
+                missingQuantity,
+                requirement.unit(),
+                missingQuantity.compareTo(BigDecimal.ZERO) == 0);
+    }
+
+    private BigDecimal calculateAvailableQuantity(Long rawMaterialId, String unit) {
+        BigDecimal stockQuantity = stockRepository
+                .findByRawMaterialIdAndUnitAndStockStatusCode(rawMaterialId, unit, StockStatusCode.AVAILABLE.name()).stream()
+                .map(Stock::getAvailableQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal reservedQuantity = stockReservationRepository
+                .findByRawMaterialIdAndUnitAndStatusCodeIn(
+                        rawMaterialId,
+                        unit,
+                        ACTIVE_STOCK_RESERVATION_STATUS_CODES)
+                .stream()
+                .map(this::remainingReservedQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return max(stockQuantity.subtract(reservedQuantity), BigDecimal.ZERO);
+    }
+
+    private BigDecimal remainingReservedQuantity(StockReservation reservation) {
+        BigDecimal reservedQuantity = reservation.getReservedQuantity() != null
+                ? reservation.getReservedQuantity()
+                : BigDecimal.ZERO;
+        BigDecimal consumedQuantity = reservation.getConsumedQuantity() != null
+                ? reservation.getConsumedQuantity()
+                : BigDecimal.ZERO;
+
+        return max(reservedQuantity.subtract(consumedQuantity), BigDecimal.ZERO);
+    }
+
+    private BigDecimal max(BigDecimal first, BigDecimal second) {
+        if (first.compareTo(second) >= 0) {
+            return first;
+        }
+
+        return second;
     }
 
     private CustomerOrderLineResult toLineResult(CustomerOrderLine line) {
