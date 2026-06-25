@@ -120,6 +120,7 @@ public class CustomerOrderService {
         CustomerOrder customerOrder = findCustomerOrderById(id);
 
         validateCanCancel(customerOrder);
+        releaseCustomerOrderReservations(customerOrder);
 
         CustomerOrderStatus cancelledStatus = findStatus(CustomerOrderStatusCode.CANCELLED);
         customerOrder.setStatus(cancelledStatus);
@@ -270,6 +271,41 @@ public class CustomerOrderService {
         if (hasStatus(customerOrder, CustomerOrderStatusCode.CANCELLED)) {
             throw new IllegalArgumentException("Customer order is already cancelled: " + customerOrder.getId());
         }
+    }
+
+    private void releaseCustomerOrderReservations(CustomerOrder customerOrder) {
+        if (hasPartiallyConsumedReservations(customerOrder)) {
+            throw new IllegalArgumentException("Customer order has partially consumed reservations and cannot be cancelled: "
+                    + customerOrder.getId());
+        }
+
+        List<StockReservation> reservedReservations = findReservedStockReservations(customerOrder);
+        if (reservedReservations.isEmpty()) {
+            return;
+        }
+
+        StockReservationStatus releasedStatus = findStockReservationStatus(StockReservationStatusCode.RELEASED);
+        LocalDateTime releasedAt = LocalDateTime.now();
+
+        for (StockReservation reservation : reservedReservations) {
+            reservation.setStatus(releasedStatus);
+            reservation.setReleasedAt(releasedAt);
+        }
+
+        stockReservationRepository.saveAll(reservedReservations);
+    }
+
+    private List<StockReservation> findReservedStockReservations(CustomerOrder customerOrder) {
+        return stockReservationRepository.findByCustomerOrderIdAndStatusCode(
+                customerOrder.getId(),
+                StockReservationStatusCode.RESERVED.name());
+    }
+
+    private boolean hasPartiallyConsumedReservations(CustomerOrder customerOrder) {
+        return !stockReservationRepository.findByCustomerOrderIdAndStatusCode(
+                        customerOrder.getId(),
+                        StockReservationStatusCode.PARTIALLY_CONSUMED.name())
+                .isEmpty();
     }
 
     private void validateCanValidate(CustomerOrder customerOrder) {

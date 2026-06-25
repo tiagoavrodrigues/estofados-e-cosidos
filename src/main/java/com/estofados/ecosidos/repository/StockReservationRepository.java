@@ -9,6 +9,8 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
 
     Optional<StockReservation> findByCode(String code);
 
+    List<StockReservation> findByCustomerOrderIdAndStatusCode(Long customerOrderId, String statusCode);
+
     List<StockReservation> findByRawMaterialIdAndUnitAndStatusCodeIn(
             Long rawMaterialId,
             String unit,
