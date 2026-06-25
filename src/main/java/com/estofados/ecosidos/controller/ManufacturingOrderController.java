@@ -47,6 +47,13 @@ public class ManufacturingOrderController {
         return ResponseEntity.ok(toDetailResponse(result));
     }
 
+    @PostMapping("/{id}/confirm-cut")
+    public ResponseEntity<ManufacturingOrderDetailResponse> confirmCut(@PathVariable Long id) {
+        ManufacturingOrderDetailResult result = manufacturingOrderService.confirmCut(id);
+
+        return ResponseEntity.ok(toDetailResponse(result));
+    }
+
     private PageResponse<ManufacturingOrderSummaryResponse> toPageResponse(
             PageResponse<ManufacturingOrderSummaryResult> result) {
         List<ManufacturingOrderSummaryResponse> content = result.content().stream()

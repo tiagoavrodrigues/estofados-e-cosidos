@@ -80,6 +80,24 @@ public class ManufacturingOrderService {
         return toDetailResult(savedManufacturingOrder);
     }
 
+    @Transactional
+    public ManufacturingOrderDetailResult confirmCut(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Manufacturing order id is required.");
+        }
+
+        ManufacturingOrder manufacturingOrder = manufacturingOrderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Manufacturing order not found: " + id));
+
+        validateCanConfirmCut(manufacturingOrder);
+
+        ManufacturingOrderStatus cutStatus = findStatus(ManufacturingOrderStatusCode.CUT);
+        manufacturingOrder.setStatus(cutStatus);
+        ManufacturingOrder savedManufacturingOrder = manufacturingOrderRepository.save(manufacturingOrder);
+
+        return toDetailResult(savedManufacturingOrder);
+    }
+
     private int normalizePage(int page) {
         if (page < 0) {
             return DEFAULT_PAGE;
@@ -112,6 +130,15 @@ public class ManufacturingOrderService {
         }
 
         throw new IllegalArgumentException("Manufacturing order must be OPEN to start cutting: "
+                + manufacturingOrder.getId());
+    }
+
+    private void validateCanConfirmCut(ManufacturingOrder manufacturingOrder) {
+        if (ManufacturingOrderStatusCode.IN_CUTTING.name().equals(getStatusCode(manufacturingOrder))) {
+            return;
+        }
+
+        throw new IllegalArgumentException("Manufacturing order must be IN_CUTTING to confirm cut: "
                 + manufacturingOrder.getId());
     }
 
