@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,13 @@ public class ManufacturingOrderController {
     @GetMapping("/{id}")
     public ResponseEntity<ManufacturingOrderDetailResponse> findManufacturingOrder(@PathVariable Long id) {
         ManufacturingOrderDetailResult result = manufacturingOrderService.findManufacturingOrder(id);
+
+        return ResponseEntity.ok(toDetailResponse(result));
+    }
+
+    @PostMapping("/{id}/start-cutting")
+    public ResponseEntity<ManufacturingOrderDetailResponse> startCutting(@PathVariable Long id) {
+        ManufacturingOrderDetailResult result = manufacturingOrderService.startCutting(id);
 
         return ResponseEntity.ok(toDetailResponse(result));
     }
