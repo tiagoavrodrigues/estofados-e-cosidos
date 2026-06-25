@@ -5,6 +5,7 @@ import com.estofados.ecosidos.dto.customerorder.CustomerOrderCreateRequest;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderDetailResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderLineCreateRequest;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderLineResponse;
+import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialRequirementResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderSummaryResponse;
 import com.estofados.ecosidos.service.CustomerOrderService;
@@ -13,6 +14,7 @@ import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
 import com.estofados.ecosidos.service.result.CustomerOrderCreateResult;
 import com.estofados.ecosidos.service.result.CustomerOrderDetailResult;
 import com.estofados.ecosidos.service.result.CustomerOrderLineResult;
+import com.estofados.ecosidos.service.result.CustomerOrderMaterialRequirementResult;
 import com.estofados.ecosidos.service.result.CustomerOrderSummaryResult;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -60,6 +62,15 @@ public class CustomerOrderController {
         CustomerOrderDetailResult result = customerOrderService.findById(id);
 
         return ResponseEntity.ok(toDetailResponse(result));
+    }
+
+    @GetMapping("/{id}/material-requirements")
+    public ResponseEntity<List<CustomerOrderMaterialRequirementResponse>> findMaterialRequirements(@PathVariable Long id) {
+        List<CustomerOrderMaterialRequirementResponse> response = customerOrderService.findMaterialRequirements(id).stream()
+                .map(this::toMaterialRequirementResponse)
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/validate")
@@ -152,6 +163,16 @@ public class CustomerOrderController {
                 result.partCode(),
                 result.partName(),
                 result.quantity());
+    }
+
+    private CustomerOrderMaterialRequirementResponse toMaterialRequirementResponse(
+            CustomerOrderMaterialRequirementResult result) {
+        return new CustomerOrderMaterialRequirementResponse(
+                result.rawMaterialId(),
+                result.rawMaterialCode(),
+                result.rawMaterialName(),
+                result.requiredQuantity(),
+                result.unit());
     }
 
     private void validatePagination(int page, int size) {
