@@ -25,10 +25,11 @@ public class ManufacturingOrderController {
 
     @GetMapping
     public ResponseEntity<PageResponse<ManufacturingOrderSummaryResponse>> findManufacturingOrders(
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<ManufacturingOrderSummaryResult> result =
-                manufacturingOrderService.findManufacturingOrders(page, size);
+                manufacturingOrderService.findManufacturingOrders(status, page, size);
 
         return ResponseEntity.ok(toPageResponse(result));
     }
