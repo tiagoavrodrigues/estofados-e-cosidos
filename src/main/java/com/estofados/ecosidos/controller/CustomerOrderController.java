@@ -9,6 +9,7 @@ import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialAvailabilit
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderMaterialRequirementResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderResponse;
 import com.estofados.ecosidos.dto.customerorder.CustomerOrderSummaryResponse;
+import com.estofados.ecosidos.service.CustomerOrderMaterialService;
 import com.estofados.ecosidos.service.CustomerOrderService;
 import com.estofados.ecosidos.service.input.CustomerOrderCreateInput;
 import com.estofados.ecosidos.service.input.CustomerOrderLineCreateInput;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerOrderController {
 
     private final CustomerOrderService customerOrderService;
+    private final CustomerOrderMaterialService customerOrderMaterialService;
 
     @PostMapping
     public ResponseEntity<CustomerOrderResponse> create(@Valid @RequestBody CustomerOrderCreateRequest request) {
@@ -68,7 +70,7 @@ public class CustomerOrderController {
 
     @GetMapping("/{id}/material-requirements")
     public ResponseEntity<List<CustomerOrderMaterialRequirementResponse>> findMaterialRequirements(@PathVariable Long id) {
-        List<CustomerOrderMaterialRequirementResponse> response = customerOrderService.findMaterialRequirements(id).stream()
+        List<CustomerOrderMaterialRequirementResponse> response = customerOrderMaterialService.findMaterialRequirements(id).stream()
                 .map(this::toMaterialRequirementResponse)
                 .toList();
 
@@ -77,7 +79,7 @@ public class CustomerOrderController {
 
     @GetMapping("/{id}/material-availability")
     public ResponseEntity<List<CustomerOrderMaterialAvailabilityResponse>> findMaterialAvailability(@PathVariable Long id) {
-        List<CustomerOrderMaterialAvailabilityResponse> response = customerOrderService.findMaterialAvailability(id)
+        List<CustomerOrderMaterialAvailabilityResponse> response = customerOrderMaterialService.findMaterialAvailability(id)
                 .stream()
                 .map(this::toMaterialAvailabilityResponse)
                 .toList();
