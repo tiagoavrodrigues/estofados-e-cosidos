@@ -7,6 +7,7 @@ import com.estofados.ecosidos.domain.ManufacturingOrderStatus;
 import com.estofados.ecosidos.domain.Part;
 import com.estofados.ecosidos.dto.common.PageResponse;
 import com.estofados.ecosidos.repository.ManufacturingOrderRepository;
+import com.estofados.ecosidos.service.result.ManufacturingOrderDetailResult;
 import com.estofados.ecosidos.service.result.ManufacturingOrderSummaryResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,18 @@ public class ManufacturingOrderService {
                 result.getTotalPages());
     }
 
+    @Transactional(readOnly = true)
+    public ManufacturingOrderDetailResult findManufacturingOrder(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Manufacturing order id is required.");
+        }
+
+        ManufacturingOrder manufacturingOrder = manufacturingOrderRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Manufacturing order not found: " + id));
+
+        return toDetailResult(manufacturingOrder);
+    }
+
     private int normalizePage(int page) {
         if (page < 0) {
             return DEFAULT_PAGE;
@@ -75,6 +88,28 @@ public class ManufacturingOrderService {
         Long customerOrderLineId = customerOrderLine != null ? customerOrderLine.getId() : null;
 
         return new ManufacturingOrderSummaryResult(
+                manufacturingOrder.getId(),
+                manufacturingOrder.getCode(),
+                customerOrderId,
+                customerOrderLineId,
+                part.getId(),
+                part.getCode(),
+                part.getName(),
+                manufacturingOrder.getQuantity(),
+                status.getCode(),
+                manufacturingOrder.getOpenedAt(),
+                manufacturingOrder.getCompletedAt());
+    }
+
+    private ManufacturingOrderDetailResult toDetailResult(ManufacturingOrder manufacturingOrder) {
+        CustomerOrder customerOrder = manufacturingOrder.getCustomerOrder();
+        CustomerOrderLine customerOrderLine = manufacturingOrder.getCustomerOrderLine();
+        Part part = manufacturingOrder.getPart();
+        ManufacturingOrderStatus status = manufacturingOrder.getStatus();
+        Long customerOrderId = customerOrder != null ? customerOrder.getId() : null;
+        Long customerOrderLineId = customerOrderLine != null ? customerOrderLine.getId() : null;
+
+        return new ManufacturingOrderDetailResult(
                 manufacturingOrder.getId(),
                 manufacturingOrder.getCode(),
                 customerOrderId,
