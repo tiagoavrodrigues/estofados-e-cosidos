@@ -14,4 +14,6 @@ public interface RackLocationRepository extends JpaRepository<RackLocation, Long
     Optional<RackLocation> findByRackAndRemovedAtIsNull(Rack rack);
 
     List<RackLocation> findByRemovedAtIsNullOrderByIdAsc();
+
+    List<RackLocation> findByManufacturingOrder_IdInAndRemovedAtIsNull(List<Long> manufacturingOrderIds);
 }

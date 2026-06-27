@@ -15,4 +15,8 @@ public interface ManufacturingOrderRepository extends JpaRepository<Manufacturin
     List<ManufacturingOrder> findByCustomerOrderIdOrderByIdAsc(Long customerOrderId);
 
     Page<ManufacturingOrder> findByStatus(ManufacturingOrderStatus status, Pageable pageable);
+
+    Optional<ManufacturingOrder> findByIdAndDeletedAtIsNull(Long id);
+
+    List<ManufacturingOrder> findByPart_IdInAndStatus_CodeAndDeletedAtIsNull(List<Long> partIds, String statusCode);
 }
