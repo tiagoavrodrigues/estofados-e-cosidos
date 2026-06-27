@@ -3,22 +3,29 @@ package com.estofados.ecosidos.controller;
 import com.estofados.ecosidos.dto.common.PageResponse;
 import com.estofados.ecosidos.dto.manufacturingorder.AvailableSemiFinishedOrderResponse;
 import com.estofados.ecosidos.dto.manufacturingorder.ComponentAvailabilityResponse;
+import com.estofados.ecosidos.dto.manufacturingorder.ComponentSupplyResponse;
 import com.estofados.ecosidos.dto.manufacturingorder.ManufacturingOrderComponentAvailabilityResponse;
 import com.estofados.ecosidos.dto.manufacturingorder.ManufacturingOrderDetailResponse;
 import com.estofados.ecosidos.dto.manufacturingorder.ManufacturingOrderSummaryResponse;
+import com.estofados.ecosidos.dto.manufacturingorder.SupplyComponentsRequest;
 import com.estofados.ecosidos.service.ManufacturingOrderComponentAvailabilityService;
+import com.estofados.ecosidos.service.ManufacturingOrderComponentSupplyService;
 import com.estofados.ecosidos.service.ManufacturingOrderService;
 import com.estofados.ecosidos.service.result.AvailableSemiFinishedOrderResult;
 import com.estofados.ecosidos.service.result.ComponentAvailabilityResult;
+import com.estofados.ecosidos.service.result.ComponentSupplyResult;
 import com.estofados.ecosidos.service.result.ManufacturingOrderComponentAvailabilityResult;
 import com.estofados.ecosidos.service.result.ManufacturingOrderDetailResult;
 import com.estofados.ecosidos.service.result.ManufacturingOrderSummaryResult;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,6 +37,7 @@ public class ManufacturingOrderController {
 
     private final ManufacturingOrderService manufacturingOrderService;
     private final ManufacturingOrderComponentAvailabilityService componentAvailabilityService;
+    private final ManufacturingOrderComponentSupplyService componentSupplyService;
 
     @GetMapping
     public ResponseEntity<PageResponse<ManufacturingOrderSummaryResponse>> findManufacturingOrders(
@@ -77,6 +85,16 @@ public class ManufacturingOrderController {
         return ResponseEntity.ok(toDetailResponse(result));
     }
 
+    @PostMapping("/{paId}/supply-components")
+    public ResponseEntity<ComponentSupplyResponse> supplyComponents(
+            @PathVariable Long paId,
+            @Valid @RequestBody SupplyComponentsRequest request) {
+        ComponentSupplyResult result =
+                componentSupplyService.supplyComponent(paId, request.semiFinishedManufacturingOrderId());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(toComponentSupplyResponse(result));
+    }
+
     @GetMapping("/{id}/component-availability")
     public ResponseEntity<ManufacturingOrderComponentAvailabilityResponse> getComponentAvailability(
             @PathVariable Long id) {
@@ -84,6 +102,18 @@ public class ManufacturingOrderController {
                 componentAvailabilityService.getComponentAvailability(id);
 
         return ResponseEntity.ok(toComponentAvailabilityResponse(result));
+    }
+
+    private ComponentSupplyResponse toComponentSupplyResponse(ComponentSupplyResult result) {
+        return new ComponentSupplyResponse(
+                result.componentAssignmentId(),
+                result.parentManufacturingOrderId(),
+                result.parentManufacturingOrderCode(),
+                result.componentManufacturingOrderId(),
+                result.componentManufacturingOrderCode(),
+                result.componentPartId(),
+                result.componentPartCode(),
+                result.componentPartName());
     }
 
     private ManufacturingOrderComponentAvailabilityResponse toComponentAvailabilityResponse(

@@ -9,4 +9,6 @@ public interface ManufacturingOrderComponentRepository extends JpaRepository<Man
     List<ManufacturingOrderComponent> findByParentManufacturingOrder_IdAndDeletedAtIsNull(Long parentManufacturingOrderId);
 
     List<ManufacturingOrderComponent> findByComponentManufacturingOrder_IdInAndDeletedAtIsNull(List<Long> componentManufacturingOrderIds);
+
+    boolean existsByComponentManufacturingOrder_IdAndDeletedAtIsNull(Long componentManufacturingOrderId);
 }
